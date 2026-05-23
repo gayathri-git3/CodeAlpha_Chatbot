@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MediAI — Health Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800&family=Epilogue:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f4f8;
+      --surface: #ffffff;
+      --surface2: #e8f0fe;
+      --border: rgba(0,0,0,0.08);
+      --accent: #1a8fe3;
+      --accent2: #00c896;
+      --danger: #ff4757;
+      --text: #1a1a2e;
+      --muted: #7a8a9a;
+      --user-bubble: linear-gradient(135deg, #1a8fe3, #00c896);
+      --bot-bubble: #ffffff;
+      --shadow: 0 4px 24px rgba(26,143,227,0.10);
+      --shadow-lg: 0 8px 40px rgba(26,143,227,0.15);
+    }
+
+    body.dark {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2333;
+      --border: rgba(255,255,255,0.07);
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --bot-bubble: #1c2333;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --shadow-lg: 0 8px 40px rgba(0,0,0,0.5);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Epilogue', sans-serif;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    body:not(.dark)::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 700px 500px at 10% 10%, rgba(26,143,227,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 500px 400px at 90% 90%, rgba(0,200,150,0.07) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .app {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 860px;
+      height: 100vh;
+      display: flex; flex-direction: column;
+      background: var(--surface);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      padding: 14px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .logo {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #1a8fe3, #00c896);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(26,143,227,0.3);
+    }
+
+    .header-info h1 {
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 17px; font-weight: 800;
+      color: var(--text); letter-spacing: -0.3px;
+    }
+
+    .header-info p { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 7px;
+    }
+
+    .hbtn {
+      width: 34px; height: 34px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 15px;
+      transition: all 0.2s; color: var(--text);
+    }
+
+    .hbtn:hover { border-color: var(--accent); transform: scale(1.06); }
+
+    select.lang-sel {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Epilogue', sans-serif;
+      font-size: 11.5px; padding: 6px 10px;
+      cursor: pointer; outline: none;
+    }
+
+    .online-badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 11px; color: var(--accent2);
+      font-weight: 500;
+    }
+
+    .online-badge::before {
+      content: ''; width: 6px; height: 6px;
+      background: var(--accent2); border-radius: 50%;
+      animation: blink 2s infinite;
+    }
+
+    @keyframes blink {
+      0%,100%{opacity:1;transform:scale(1);}
+      50%{opacity:0.4;transform:scale(0.7);}
+    }
+
+    /* ===== EMERGENCY BANNER ===== */
+    .emergency-banner {
+      background: linear-gradient(135deg, #ff4757, #ff6b6b);
+      color: white; padding: 10px 20px;
+      display: none; align-items: center; gap: 10px;
+      font-size: 13px; font-weight: 500;
+      flex-shrink: 0; animation: slideDown 0.3s ease;
+    }
+
+    .emergency-banner.show { display: flex; }
+
+    @keyframes slideDown {
+      from { opacity:0; transform:translateY(-10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    .emergency-banner a {
+      color: white; font-weight: 700;
+      margin-left: auto; text-decoration: none;
+      background: rgba(255,255,255,0.2);
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 12px;
+    }
+
+    /* ===== QUICK ACTIONS ===== */
+    .quick-actions {
+      padding: 10px 20px 6px;
+      display: flex; gap: 7px; flex-wrap: wrap;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .qa-btn {
+      padding: 5px 13px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 12px; cursor: pointer;
+      font-family: 'Epilogue', sans-serif;
+      color: var(--muted); transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .qa-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(26,143,227,0.07);
+    }
+
+    /* ===== MESSAGES ===== */
+    .messages {
+      flex: 1; overflow-y: auto;
+      padding: 20px; display: flex;
+      flex-direction: column; gap: 16px;
+      scroll-behavior: smooth;
+    }
+
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* Welcome */
+    .welcome {
+      margin: auto; max-width: 440px;
+      text-align: center; padding: 10px;
+    }
+
+    .welcome-icon {
+      width: 70px; height: 70px;
+      background: linear-gradient(135deg, #1a8fe3, #00c896);
+      border-radius: 22px; margin: 0 auto 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      box-shadow: 0 8px 24px rgba(26,143,227,0.25);
+    }
+
+    .welcome h2 {
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 22px; font-weight: 800;
+      margin-bottom: 8px; letter-spacing: -0.5px;
+    }
+
+    .welcome p { font-size: 13.5px; color: var(--muted); line-height: 1.65; }
+
+    .welcome-cards {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-top: 18px;
+    }
+
+    .wcard {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px;
+      cursor: pointer; text-align: left;
+      transition: all 0.2s;
+    }
+
+    .wcard:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .wcard .wc-icon { font-size: 20px; margin-bottom: 5px; }
+    .wcard .wc-title { font-size: 12.5px; font-weight: 600; color: var(--text); }
+    .wcard .wc-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* Messages */
+    .msg {
+      display: flex; gap: 10px;
+      animation: fadeUp 0.3s ease forwards; opacity: 0;
+    }
+
+    @keyframes fadeUp {
+      from{opacity:0;transform:translateY(8px);}
+      to{opacity:1;transform:translateY(0);}
+    }
+
+    .msg.user { flex-direction: row-reverse; }
+
+    .av {
+      width: 32px; height: 32px; border-radius: 10px;
+      flex-shrink: 0; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700;
+      font-family: 'Cabinet Grotesk', sans-serif;
+    }
+
+    .av.bot {
+      background: linear-gradient(135deg, rgba(26,143,227,0.15), rgba(0,200,150,0.15));
+      border: 1px solid rgba(26,143,227,0.25);
+    }
+
+    .av.user-av {
+      background: linear-gradient(135deg, #1a8fe3, #00c896);
+      color: #fff;
+    }
+
+    .msg-wrap { display: flex; flex-direction: column; max-width: 74%; }
+    .msg.user .msg-wrap { align-items: flex-end; }
+
+    .bubble {
+      padding: 12px 16px; border-radius: 18px;
+      font-size: 14px; line-height: 1.7;
+      word-break: break-word;
+    }
+
+    .msg.bot .bubble {
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+      border-top-left-radius: 4px;
+      box-shadow: var(--shadow);
+    }
+
+    .msg.user .bubble {
+      background: var(--user-bubble);
+      color: #fff; border-top-right-radius: 4px;
+    }
+
+    /* Severity badge */
+    .severity-badge {
+      display: inline-block;
+      padding: 2px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .sev-low { background: rgba(0,200,150,0.15); color: #00c896; }
+    .sev-medium { background: rgba(255,165,0,0.15); color: #ffa500; }
+    .sev-high { background: rgba(255,71,87,0.15); color: #ff4757; }
+
+    /* Feedback row */
+    .fb-row {
+      display: flex; gap: 5px; margin-top: 6px;
+      opacity: 0; transition: opacity 0.2s;
+    }
+
+    .msg:hover .fb-row { opacity: 1; }
+
+    .fb {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 3px 9px;
+      font-size: 12px; cursor: pointer;
+      transition: all 0.2s; color: var(--muted);
+    }
+
+    .fb:hover { border-color: var(--accent); color: var(--accent); transform: scale(1.1); }
+    .fb.liked { border-color: var(--accent2); color: var(--accent2); }
+    .fb.disliked { border-color: var(--danger); color: var(--danger); }
+
+    /* Typing */
+    .typing-bubble {
+      display: flex; gap: 5px; align-items: center;
+      padding: 14px 16px;
+    }
+
+    .typing-bubble span {
+      width: 7px; height: 7px;
+      background: var(--muted); border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-bubble span:nth-child(2){animation-delay:0.2s;}
+    .typing-bubble span:nth-child(3){animation-delay:0.4s;}
+
+    @keyframes bounce {
+      0%,60%,100%{transform:translateY(0);}
+      30%{transform:translateY(-7px);}
+    }
+
+    /* ===== HISTORY SIDEBAR ===== */
+    .sidebar {
+      position: fixed; left: -290px; top: 0; bottom: 0;
+      width: 270px; background: var(--surface);
+      border-right: 1px solid var(--border);
+      z-index: 100; transition: left 0.3s ease;
+      display: flex; flex-direction: column;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .sidebar.open { left: 0; }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .sidebar-header h3 {
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 15px; font-weight: 700;
+    }
+
+    .history-list { flex: 1; overflow-y: auto; padding: 10px; }
+
+    .h-item {
+      padding: 10px 12px; border-radius: 10px;
+      cursor: pointer; margin-bottom: 5px;
+      border: 1px solid var(--border);
+      background: var(--surface2); transition: all 0.2s;
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+
+    .h-item:hover { border-color: var(--accent); }
+    .h-item .h-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .h-item .h-info { flex: 1; min-width: 0; }
+    .h-item .h-title { font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .h-item .h-date { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+    .h-item .h-del { color: var(--muted); font-size: 13px; cursor: pointer; padding: 2px; flex-shrink: 0; }
+    .h-item .h-del:hover { color: var(--danger); }
+
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 99; display: none;
+    }
+
+    .overlay.show { display: block; }
+
+    /* ===== INPUT AREA ===== */
+    .input-area {
+      padding: 12px 20px 16px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .file-preview {
+      display: flex; gap: 7px; flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .fchip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 5px 10px;
+      font-size: 12px; display: flex;
+      align-items: center; gap: 6px; color: var(--text);
+    }
+
+    .fchip .rm { cursor: pointer; color: var(--muted); }
+    .fchip .rm:hover { color: var(--danger); }
+
+    .input-row { display: flex; gap: 8px; align-items: flex-end; }
+
+    .side-actions { display: flex; gap: 6px; align-items: flex-end; }
+
+    textarea {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 11px 14px;
+      color: var(--text);
+      font-family: 'Epilogue', sans-serif;
+      font-size: 14px; resize: none; outline: none;
+      max-height: 120px; min-height: 44px;
+      line-height: 1.5; transition: border-color 0.2s;
+    }
+
+    textarea::placeholder { color: var(--muted); }
+    textarea:focus { border-color: var(--accent); }
+
+    .ibtn {
+      width: 42px; height: 42px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 17px; flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .ibtn:hover { border-color: var(--accent); transform: scale(1.05); }
+
+    .ibtn.recording {
+      border-color: var(--danger);
+      background: rgba(255,71,87,0.1);
+      animation: recPulse 1s infinite;
+    }
+
+    @keyframes recPulse {
+      0%,100%{box-shadow:0 0 0 0 rgba(255,71,87,0.4);}
+      50%{box-shadow:0 0 0 6px rgba(255,71,87,0);}
+    }
+
+    .send-btn {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, #1a8fe3, #00c896);
+      border: none; border-radius: 12px;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(26,143,227,0.3);
+    }
+
+    .send-btn:hover { transform: scale(1.06); filter: brightness(1.1); }
+    .send-btn:active { transform: scale(0.96); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .send-btn svg { width: 17px; height: 17px; fill: #fff; }
+
+    .input-hint {
+      margin-top: 7px; font-size: 10.5px;
+      color: var(--muted); text-align: center;
+    }
+
+    .disclaimer {
+      font-size: 10px; color: var(--danger);
+      text-align: center; margin-top: 3px; opacity: 0.7;
+    }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed; bottom: 80px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--text); color: var(--surface);
+      padding: 8px 18px; border-radius: 20px;
+      font-size: 13px; opacity: 0;
+      transition: opacity 0.3s; z-index: 200;
+      pointer-events: none; white-space: nowrap;
+    }
+
+    .toast.show { opacity: 1; }
+
+    #fileIn { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h3>🕐 Chat History</h3>
+    <div class="hbtn" onclick="closeSidebar()">✕</div>
+  </div>
+  <div class="history-list" id="historyList"></div>
+  <div style="padding:12px;border-top:1px solid var(--border)">
+    <button onclick="clearHistory()" style="width:100%;padding:9px;background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);color:var(--danger);border-radius:10px;cursor:pointer;font-family:'Epilogue',sans-serif;font-size:13px;">🗑 Clear All</button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">🏥</div>
+    <div class="header-info">
+      <h1>MediAI Health Assistant</h1>
+      <p>AI-powered symptom checker & health guide</p>
+    </div>
+    <div class="header-actions">
+      <div class="online-badge">Online</div>
+      <select class="lang-sel" id="langSel" onchange="setLang(this.value)">
+        <option value="en">🌐 English</option>
+        <option value="ta">🇮🇳 Tamil</option>
+        <option value="hi">🇮🇳 Hindi</option>
+        <option value="te">🇮🇳 Telugu</option>
+        <option value="fr">🇫🇷 French</option>
+        <option value="de">🇩🇪 German</option>
+      </select>
+      <div class="hbtn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</div>
+      <div class="hbtn" onclick="newChat()" title="New chat">✏️</div>
+      <div class="hbtn" onclick="openSidebar()" title="History">📂</div>
+    </div>
+  </div>
+
+  <!-- Emergency Banner -->
+  <div class="emergency-banner" id="emergBanner">
+    🚨 <strong>Emergency detected!</strong> Please call emergency services immediately.
+    <a href="tel:108">📞 Call 108</a>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="quick-actions">
+    <button class="qa-btn" onclick="quickAsk('Check my symptoms')">🩺 Symptom Checker</button>
+    <button class="qa-btn" onclick="quickAsk('Common cold remedies')">🤧 Cold & Flu</button>
+    <button class="qa-btn" onclick="quickAsk('Headache causes and treatment')">🤕 Headache</button>
+    <button class="qa-btn" onclick="quickAsk('Healthy diet tips')">🥗 Diet & Nutrition</button>
+    <button class="qa-btn" onclick="quickAsk('Mental health and stress management')">🧠 Mental Health</button>
+    <button class="qa-btn" onclick="quickAsk('First aid basics')">🩹 First Aid</button>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages" id="messages">
+    <div class="welcome" id="welcomeCard">
+      <div class="welcome-icon">🏥</div>
+      <h2>Your AI Health Assistant</h2>
+      <p>Get instant health guidance, symptom analysis, and medical information. Available 24/7 in multiple languages.</p>
+      <div class="welcome-cards">
+        <div class="wcard" onclick="quickAsk('I have fever and body pain, what should I do?')">
+          <div class="wc-icon">🌡️</div>
+          <div class="wc-title">Symptom Check</div>
+          <div class="wc-desc">Describe your symptoms</div>
+        </div>
+        <div class="wcard" onclick="quickAsk('What medicines are safe for headache?')">
+          <div class="wc-icon">💊</div>
+          <div class="wc-title">Medicine Info</div>
+          <div class="wc-desc">Drug info & dosage</div>
+        </div>
+        <div class="wcard" onclick="quickAsk('How to improve my immunity?')">
+          <div class="wc-icon">🛡️</div>
+          <div class="wc-title">Wellness Tips</div>
+          <div class="wc-desc">Stay healthy daily</div>
+        </div>
+        <div class="wcard" onclick="quickAsk('What is the first aid for burns?')">
+          <div class="wc-icon">🩹</div>
+          <div class="wc-title">First Aid Guide</div>
+          <div class="wc-desc">Emergency basics</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Preview -->
+  <div class="file-preview" id="filePreview" style="padding:0 20px;"></div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <div class="input-row">
+      <div class="side-actions">
+        <div class="ibtn" onclick="document.getElementById('fileIn').click()" title="Upload image">📎</div>
+        <div class="ibtn" id="micBtn" onclick="toggleVoice()" title="Voice input">🎤</div>
+      </div>
+      <textarea id="userInput" placeholder="Describe your symptoms or ask a health question..." rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+    <div class="input-hint">🎤 Voice · 📎 Image · 🌐 Multi-language · 💬 24/7 Available</div>
+    <div class="disclaimer">⚠️ Not a substitute for professional medical advice. Always consult a doctor.</div>
+  </div>
+</div>
+
+<input type="file" id="fileIn" accept="image/*" onchange="handleFile(event)"/>
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===== CONFIG =====
+  const LANGS = {
+    en: "Respond in English.",
+    ta: "Respond in Tamil (தமிழ்). Use Tamil script.",
+    hi: "Respond in Hindi (हिन्दी). Use Devanagari script.",
+    te: "Respond in Telugu (తెలుగు). Use Telugu script.",
+    fr: "Respond in French.",
+    de: "Respond in German."
+  };
+
+  const SYSTEM = `You are MediAI, an advanced AI-powered medical health assistant. You help users understand health conditions, symptoms, medications, first aid, nutrition, mental health, and wellness.
+
+Your capabilities:
+- Symptom analysis & possible causes
+- General medication information (not prescriptions)
+- First aid guidance
+- Diet, nutrition & wellness tips  
+- Mental health support & stress management
+- Preventive healthcare advice
+- When to see a doctor guidance
+
+IMPORTANT RULES:
+1. Always add a disclaimer that you are not a substitute for professional medical advice
+2. For EMERGENCY symptoms (chest pain, difficulty breathing, stroke signs, severe bleeding, unconsciousness), IMMEDIATELY say "EMERGENCY" at the start and urge to call emergency services (108 in India, 911 in US)
+3. Be empathetic, clear, and easy to understand
+4. Use structured responses with bullet points when listing symptoms/remedies
+5. Always recommend consulting a doctor for serious conditions
+6. Include severity assessment: LOW / MEDIUM / HIGH when analyzing symptoms
+
+Format symptom responses as:
+[SEVERITY: LOW/MEDIUM/HIGH]
+Analysis: ...
+Possible causes: ...
+Recommended actions: ...
+When to see a doctor: ...`;
+
+  let history = [];
+  let lang = 'en';
+  let isDark = false;
+  let isLoading = false;
+  let isRecording = false;
+  let recognition = null;
+  let pendingFiles = [];
+  let sessions = JSON.parse(localStorage.getItem('medi_sessions') || '[]');
+  let currentSession = null;
+
+  // ===== THEME =====
+  function toggleTheme() {
+    isDark = !isDark;
+    document.body.classList.toggle('dark', isDark);
+    document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+  }
+
+  // ===== LANGUAGE =====
+  function setLang(v) {
+    lang = v;
+    showToast('Language updated 🌐');
+  }
+
+  function getSys() { return SYSTEM + '\n\n' + LANGS[lang]; }
+
+  // ===== TOAST =====
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ===== UTILS =====
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  }
+
+  function quickAsk(q) {
+    document.getElementById('userInput').value = q;
+    sendMessage();
+  }
+
+  // ===== FILE =====
+  function handleFile(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      pendingFiles = [{ name: file.name, data: ev.target.result, type: file.type }];
+      renderFiles();
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  function renderFiles() {
+    const fp = document.getElementById('filePreview');
+    if (!pendingFiles.length) { fp.innerHTML = ''; return; }
+    fp.innerHTML = pendingFiles.map((f,i) => `
+      <div class="fchip">🖼 ${f.name} <span class="rm" onclick="removeFile(${i})">✕</span></div>
+    `).join('');
+  }
+
+  function removeFile(i) { pendingFiles.splice(i,1); renderFiles(); }
+
+  // ===== VOICE =====
+  function toggleVoice() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      showToast('Voice not supported here 😔'); return;
+    }
+    if (isRecording) { recognition.stop(); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.lang = lang === 'ta' ? 'ta-IN' : lang === 'hi' ? 'hi-IN' : lang === 'te' ? 'te-IN' : 'en-US';
+    recognition.onstart = () => {
+      isRecording = true;
+      document.getElementById('micBtn').classList.add('recording');
+      document.getElementById('micBtn').textContent = '⏹';
+      showToast('🎤 Listening...');
+    };
+    recognition.onresult = e => {
+      document.getElementById('userInput').value = e.results[0][0].transcript;
+      autoResize(document.getElementById('userInput'));
+    };
+    recognition.onend = () => {
+      isRecording = false;
+      document.getElementById('micBtn').classList.remove('recording');
+      document.getElementById('micBtn').textContent = '🎤';
+    };
+    recognition.onerror = () => {
+      showToast('Voice error, try again!');
+      isRecording = false;
+      document.getElementById('micBtn').classList.remove('recording');
+      document.getElementById('micBtn').textContent = '🎤';
+    };
+    recognition.start();
+  }
+
+  // ===== EMERGENCY CHECK =====
+  function checkEmergency(text) {
+    const keywords = ['emergency','chest pain','can\'t breathe','not breathing','unconscious','stroke','heart attack','severe bleeding','poisoning','overdose'];
+    const lower = text.toLowerCase();
+    if (keywords.some(k => lower.includes(k))) {
+      document.getElementById('emergBanner').classList.add('show');
+      setTimeout(() => document.getElementById('emergBanner').classList.remove('show'), 10000);
+    }
+  }
+
+  // ===== SEVERITY =====
+  function parseSeverity(text) {
+    if (text.includes('[SEVERITY: HIGH]') || text.includes('EMERGENCY')) return 'high';
+    if (text.includes('[SEVERITY: MEDIUM]')) return 'medium';
+    if (text.includes('[SEVERITY: LOW]')) return 'low';
+    return null;
+  }
+
+  function cleanText(text) {
+    return text.replace(/\[SEVERITY: (LOW|MEDIUM|HIGH)\]/g, '').trim();
+  }
+
+  // ===== MESSAGES =====
+  function addMessage(role, text, imgData) {
+    const wrap = document.getElementById('messages');
+    const wc = document.getElementById('welcomeCard');
+    if (wc) wc.remove();
+
+    const msg = document.createElement('div');
+    msg.className = `msg ${role}`;
+
+    const av = document.createElement('div');
+    av.className = role === 'user' ? 'av user-av' : 'av bot';
+    av.textContent = role === 'user' ? '👤' : '🏥';
+
+    const msgWrap = document.createElement('div');
+    msgWrap.className = 'msg-wrap';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+
+    if (role === 'bot') {
+      const sev = parseSeverity(text);
+      if (sev) {
+        const badge = document.createElement('div');
+        badge.className = `severity-badge sev-${sev}`;
+        badge.textContent = sev === 'high' ? '🔴 HIGH SEVERITY' : sev === 'medium' ? '🟡 MEDIUM SEVERITY' : '🟢 LOW SEVERITY';
+        bubble.appendChild(badge);
+      }
+      const cleaned = cleanText(text);
+      const span = document.createElement('div');
+      span.innerHTML = cleaned.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+      bubble.appendChild(span);
+    } else {
+      if (imgData) {
+        const img = document.createElement('img');
+        img.src = imgData;
+        img.style.cssText = 'max-width:200px;border-radius:10px;display:block;margin-bottom:6px;';
+        bubble.appendChild(img);
+      }
+      const span = document.createElement('span');
+      span.innerHTML = text.replace(/\n/g,'<br>');
+      bubble.appendChild(span);
+    }
+
+    msgWrap.appendChild(bubble);
+
+    if (role === 'bot') {
+      const fbRow = document.createElement('div');
+      fbRow.className = 'fb-row';
+      fbRow.dataset.text = text;
+      fbRow.innerHTML = `
+        <button class="fb" onclick="feedback(this,'👍')">👍 Helpful</button>
+        <button class="fb" onclick="feedback(this,'👎')">👎 Not helpful</button>
+        <button class="fb" onclick="copyMsg(this)">📋 Copy</button>
+      `;
+      msgWrap.appendChild(fbRow);
+    }
+
+    msg.appendChild(av);
+    msg.appendChild(msgWrap);
+    wrap.appendChild(msg);
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function feedback(btn, emoji) {
+    const row = btn.parentElement;
+    row.querySelectorAll('.fb').forEach(b => { b.classList.remove('liked','disliked'); });
+    btn.classList.add(emoji === '👍' ? 'liked' : 'disliked');
+    showToast(emoji === '👍' ? 'Thanks! Glad it helped 😊' : 'Sorry! We\'ll do better 🙏');
+  }
+
+  function copyMsg(btn) {
+    navigator.clipboard.writeText(btn.parentElement.dataset.text)
+      .then(() => showToast('Copied to clipboard! 📋'));
+  }
+
+  function showTyping() {
+    const wrap = document.getElementById('messages');
+    const d = document.createElement('div');
+    d.className = 'msg bot'; d.id = 'typingInd';
+    const av = document.createElement('div');
+    av.className = 'av bot'; av.textContent = '🏥';
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    b.innerHTML = '<div class="typing-bubble"><span></span><span></span><span></span></div>';
+    d.appendChild(av); d.appendChild(b);
+    wrap.appendChild(d);
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typingInd');
+    if (t) t.remove();
+  }
+
+  // ===== SEND =====
+  async function sendMessage() {
+    if (isLoading) return;
+    const inp = document.getElementById('userInput');
+    const text = inp.value.trim();
+    const imgFile = pendingFiles[0];
+    if (!text && !imgFile) return;
+
+    inp.value = ''; inp.style.height = 'auto';
+    const imgData = imgFile ? imgFile.data : null;
+    pendingFiles = []; renderFiles();
+
+    addMessage('user', text || '🖼 Image sent', imgData);
+    checkEmergency(text);
+
+    let msgContent;
+    if (imgData) {
+      const b64 = imgData.split(',')[1];
+      const mime = imgData.split(';')[0].split(':')[1];
+      msgContent = [
+        { type: 'image', source: { type: 'base64', media_type: mime, data: b64 }},
+        { type: 'text', text: text || 'Analyze this medical image and provide health information.' }
+      ];
+    } else {
+      msgContent = text;
+    }
+
+    history.push({ role: 'user', content: msgContent });
+    isLoading = true;
+    document.getElementById('sendBtn').disabled = true;
+    showTyping();
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: getSys(),
+          messages: history
+        })
+      });
+      const data = await res.json();
+      const reply = data.content?.[0]?.text || "I couldn't process that. Please try again.";
+      removeTyping();
+      addMessage('bot', reply);
+      history.push({ role: 'assistant', content: reply });
+      saveSession(text || 'Image analysis');
+    } catch {
+      removeTyping();
+      addMessage('bot', '⚠️ Connection error. Please check your internet and try again.');
+      history.pop();
+    }
+
+    isLoading = false;
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('userInput').focus();
+  }
+
+  // ===== HISTORY =====
+  function saveSession(firstMsg) {
+    if (!currentSession) {
+      currentSession = Date.now();
+      sessions.unshift({ id: currentSession, title: firstMsg.slice(0,40), date: new Date().toLocaleDateString(), history: [] });
+    }
+    const s = sessions.find(x => x.id === currentSession);
+    if (s) s.history = history;
+    localStorage.setItem('medi_sessions', JSON.stringify(sessions));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (!sessions.length) {
+      list.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:13px;padding:20px">No history yet</p>';
+      return;
+    }
+    list.innerHTML = sessions.map(s => `
+      <div class="h-item" onclick="loadSession(${s.id})">
+        <span class="h-icon">🩺</span>
+        <div class="h-info">
+          <div class="h-title">${s.title}</div>
+          <div class="h-date">${s.date}</div>
+        </div>
+        <span class="h-del" onclick="event.stopPropagation();deleteSession(${s.id})">🗑</span>
+      </div>`).join('');
+  }
+
+  function loadSession(id) {
+    const s = sessions.find(x => x.id === id);
+    if (!s) return;
+    currentSession = id;
+    history = s.history;
+    const wrap = document.getElementById('messages');
+    wrap.innerHTML = '';
+    history.forEach(m => {
+      const txt = typeof m.content === 'string' ? m.content : (m.content.find?.(c => c.type === 'text')?.text || '');
+      addMessage(m.role === 'user' ? 'user' : 'bot', txt);
+    });
+    closeSidebar();
+    showToast('Chat loaded 📂');
+  }
+
+  function deleteSession(id) {
+    sessions = sessions.filter(s => s.id !== id);
+    localStorage.setItem('medi_sessions', JSON.stringify(sessions));
+    renderHistory();
+    showToast('Deleted 🗑');
+  }
+
+  function clearHistory() {
+    if (confirm('Clear all chat history?')) {
+      sessions = [];
+      localStorage.removeItem('medi_sessions');
+      renderHistory();
+      showToast('All history cleared');
+    }
+  }
+
+  function newChat() {
+    currentSession = null;
+    history = [];
+    const wrap = document.getElementById('messages');
+    wrap.innerHTML = '';
+    wrap.innerHTML = `<div class="welcome" id="welcomeCard">
+      <div class="welcome-icon">🏥</div>
+      <h2>Your AI Health Assistant</h2>
+      <p>Get instant health guidance, symptom analysis, and medical information. Available 24/7 in multiple languages.</p>
+      <div class="welcome-cards">
+        <div class="wcard" onclick="quickAsk('I have fever and body pain, what should I do?')">
+          <div class="wc-icon">🌡️</div><div class="wc-title">Symptom Check</div><div class="wc-desc">Describe your symptoms</div>
+        </div>
+        <div class="wcard" onclick="quickAsk('What medicines are safe for headache?')">
+          <div class="wc-icon">💊</div><div class="wc-title">Medicine Info</div><div class="wc-desc">Drug info & dosage</div>
+        </div>
+        <div class="wcard" onclick="quickAsk('How to improve my immunity?')">
+          <div class="wc-icon">🛡️</div><div class="wc-title">Wellness Tips</div><div class="wc-desc">Stay healthy daily</div>
+        </div>
+        <div class="wcard" onclick="quickAsk('What is the first aid for burns?')">
+          <div class="wc-icon">🩹</div><div class="wc-title">First Aid Guide</div><div class="wc-desc">Emergency basics</div>
+        </div>
+      </div>
+    </div>`;
+    showToast('New chat started ✏️');
+  }
+
+  function openSidebar() {
+    renderHistory();
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('overlay').classList.add('show');
+  }
+
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+  }
+
+  // Init
+  renderHistory();
+</script>
+</body>
+</html>
